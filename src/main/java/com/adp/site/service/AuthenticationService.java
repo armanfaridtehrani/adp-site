@@ -19,6 +19,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Example;
 import org.springframework.http.HttpHeaders;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -29,11 +31,13 @@ import java.sql.Timestamp;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
+import java.util.Random;
 import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
+    private final JavaMailSender javaMailSender;
     private final UserRepository repository;
     private final TokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
@@ -74,6 +78,13 @@ public class AuthenticationService {
                         request.getPassword()
                 )
         );
+        SimpleMailMessage message=new SimpleMailMessage();
+        message.setTo(request.getEmail());
+        message.setSubject("auth otp");
+        Random random=new Random();
+        int generatedOtp = random.nextInt(999999);
+        String otp = String.format("%06d", generatedOtp);
+        message.setText("your otp is:  "+ otp );
         var user = repository.findByEmail(request.getEmail())
                 .orElseThrow();
         var jwtToken = jwtService.generateToken(user);
