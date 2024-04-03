@@ -9,12 +9,16 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import redis.clients.jedis.JedisPooled;
 
 import java.io.IOException;
+import java.util.Random;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -22,6 +26,8 @@ import java.io.IOException;
 public class AuthenticationController {
 
   private final AuthenticationService service;
+  private final JedisPooled jedisPooled;
+  private final JavaMailSender javaMailSender;
 
   @PostMapping("/register")
   public ResponseEntity<AuthenticationResponse> register(
@@ -47,6 +53,22 @@ public class AuthenticationController {
   ) throws IOException {
     service.refreshToken(request, response);
   }
+  @PostMapping("/sendMail")
+  public void sendMail(
+          HttpServletResponse response,@RequestBody AuthenticationRequest request
+  ) throws IOException {
+    SimpleMailMessage message=new SimpleMailMessage();
+    message.setTo(request.getEmail());
+    message.setSubject("auth otp");
+    Random random=new Random();
+    int generatedOtp = random.nextInt(999999);
+    String otp = String.format("%06d", generatedOtp);
+    jedisPooled.setex(request.getEmail(),120,otp);
+    message.setText("your otp is:  "+ otp );
+    javaMailSender.send(message);
+
+  }
+
 
 
 }

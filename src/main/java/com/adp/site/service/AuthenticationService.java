@@ -37,7 +37,7 @@ import java.util.regex.Pattern;
 @Service
 @RequiredArgsConstructor
 public class AuthenticationService {
-    private final JavaMailSender javaMailSender;
+
     private final UserRepository repository;
     private final TokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
@@ -78,13 +78,7 @@ public class AuthenticationService {
                         request.getPassword()
                 )
         );
-        SimpleMailMessage message=new SimpleMailMessage();
-        message.setTo(request.getEmail());
-        message.setSubject("auth otp");
-        Random random=new Random();
-        int generatedOtp = random.nextInt(999999);
-        String otp = String.format("%06d", generatedOtp);
-        message.setText("your otp is:  "+ otp );
+
         var user = repository.findByEmail(request.getEmail())
                 .orElseThrow();
         var jwtToken = jwtService.generateToken(user);

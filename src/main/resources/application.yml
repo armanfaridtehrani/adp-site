@@ -13,11 +13,42 @@ spring:
                 format_sql: true
         database: postgresql
         database-platform: org.hibernate.dialect.PostgreSQLDialect
+    mail:
+        port: 587
+        host: smtp.gmail.com
+        username: adpdigitalsite@gmail.com
+        password: kynsyohcxmvlmbsq
+        properties:
+                mail:
+                    transport:
+                        protocol: smtp
+                    smtp:
+                        auth: true
+                        starttls:
+                            enable: true
+
 
 application:
+    redis:
+        redisServer: 10.10.116.11
+        jedisMaxTotal: 256
+        jedisMaxIdle : 256
+        jedisMinIdle : 64
+        redisTimeOut : 60000
+        jedisMinEvictableIdleTimeMillis : 60
+        jedisTimeBetweenEvictionRunsMillis : 30
+        jedisNumTestsPerEvictionRun : 3
+        jedisPassword : pishkhan3
+        jedisPort : 6379
+
     security:
         jwt:
             secret-key: 404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
             expiration: 86400000 # a day
             refresh-token:
                 expiration: 604800000 # 7 days
+
+
+
+
+
