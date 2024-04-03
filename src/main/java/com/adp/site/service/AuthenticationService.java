@@ -80,10 +80,6 @@ public class AuthenticationService {
                 .build();
     }
 
-
-
-
-
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -161,7 +157,7 @@ public class AuthenticationService {
     }
 
     private void emailValidator(String email) throws AuthenticationException {
-        boolean isValid= Pattern.compile("^[\\w!#$%&'*+/=?`{|}~^-]+(?:\\\\.[\\w!#$%&'*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}",Pattern.CASE_INSENSITIVE).matcher(email).matches();
+        boolean isValid= Pattern.compile("^[\\w.!#$%&'*+/=?`{|}~^-]+(?:\\\\.[\\w!#$%&'*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}",Pattern.CASE_INSENSITIVE).matcher(email).matches();
         if (!isValid){
             throw new AuthenticationException("invalid email!");
 
