@@ -1,9 +1,9 @@
 package com.adp.site.service;
 
 
-import ch.qos.logback.core.boolex.EvaluationException;
 import com.adp.site.DTO.AuthenticationRequest;
 import com.adp.site.DTO.AuthenticationResponse;
+import com.adp.site.DTO.PreAuthenticateResponse;
 import com.adp.site.DTO.RegisterRequest;
 import com.adp.site.entity.Token;
 import com.adp.site.entity.User;
@@ -19,8 +19,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Example;
 import org.springframework.http.HttpHeaders;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -28,10 +26,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.sql.Timestamp;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.Random;
 import java.util.regex.Pattern;
 
 @Service
@@ -43,10 +37,12 @@ public class AuthenticationService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
+    private final MailService mailService;
+
 
     public AuthenticationResponse register(RegisterRequest request) throws AuthenticationException {
 
-        if (repository.exists(Example.of(User.builder().email(request.getEmail()).build()))){
+        if (repository.exists(Example.of(User.builder().email(request.getEmail()).build()))) {
             throw new AuthenticationException("user already registered");
         }
         passwordValidator(request.getPassword());
@@ -62,7 +58,7 @@ public class AuthenticationService {
         var savedUser = repository.save(user);
         var jwtToken = jwtService.generateToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
-        DecodedJWT decodedJWT= JWT.decode(jwtToken);
+        DecodedJWT decodedJWT = JWT.decode(jwtToken);
         saveUserToken(savedUser, jwtToken);
         return AuthenticationResponse.builder()
                 .accessToken(jwtToken)
@@ -70,6 +66,23 @@ public class AuthenticationService {
                 .expireTime(String.valueOf(decodedJWT.getExpiresAt()))
                 .build();
     }
+
+    public PreAuthenticateResponse preAuthenticate(AuthenticationRequest request) {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.getEmail(),
+                        request.getPassword()
+                )
+        );
+        mailService.sendMail(request);
+        return PreAuthenticateResponse.builder()
+                .resultMessage("mail send successfully!")
+                .build();
+    }
+
+
+
+
 
     public AuthenticationResponse authenticate(AuthenticationRequest request) {
         authenticationManager.authenticate(
@@ -85,7 +98,7 @@ public class AuthenticationService {
         var refreshToken = jwtService.generateRefreshToken(user);
         revokeAllUserTokens(user);
         saveUserToken(user, jwtToken);
-        DecodedJWT decodedJWT=JWT.decode(jwtToken);
+        DecodedJWT decodedJWT = JWT.decode(jwtToken);
         return AuthenticationResponse.builder()
                 .accessToken(jwtToken)
                 .refreshToken(refreshToken)
@@ -94,7 +107,7 @@ public class AuthenticationService {
     }
 
     private void saveUserToken(User user, String jwtToken) {
-        DecodedJWT decodedJWT= JWT.decode(jwtToken);
+        DecodedJWT decodedJWT = JWT.decode(jwtToken);
         var token = Token.builder()
                 .user(user)
                 .token(jwtToken)
@@ -136,7 +149,7 @@ public class AuthenticationService {
                 var accessToken = jwtService.generateToken(user);
                 revokeAllUserTokens(user);
                 saveUserToken(user, accessToken);
-                DecodedJWT decodedJWT= JWT.decode(accessToken);
+                DecodedJWT decodedJWT = JWT.decode(accessToken);
                 var authResponse = AuthenticationResponse.builder()
                         .accessToken(accessToken)
                         .refreshToken(refreshToken)
@@ -146,6 +159,7 @@ public class AuthenticationService {
             }
         }
     }
+
     private void emailValidator(String email) throws AuthenticationException {
         boolean isValid= Pattern.compile("^[\\w!#$%&'*+/=?`{|}~^-]+(?:\\\\.[\\w!#$%&'*+/=?`{|}~^-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,6}",Pattern.CASE_INSENSITIVE).matcher(email).matches();
         if (!isValid){
@@ -153,10 +167,11 @@ public class AuthenticationService {
 
         }
     }
+
     private void passwordValidator(String password) throws AuthenticationException {
-        boolean isValid= Pattern.compile("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#&()–[{}]:;',?/*~$^+=<>]).{8,20}$")
+        boolean isValid = Pattern.compile("^(?=.*[0-9])(?=.*[a-z])(?=.*[A-Z])(?=.*[!@#&()–[{}]:;',?/*~$^+=<>]).{8,20}$")
                 .matcher(password).matches();
-        if (!isValid){
+        if (!isValid) {
             throw new AuthenticationException("password does not meet security recommendation!");
 
         }
