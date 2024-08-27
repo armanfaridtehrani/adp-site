@@ -23,6 +23,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import redis.clients.jedis.JedisPooled;
 
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -38,6 +39,7 @@ public class AuthenticationService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final MailService mailService;
+    private final JedisPooled jedisPooled;
 
 
     public AuthenticationResponse register(RegisterRequest request) throws AuthenticationException {
@@ -80,7 +82,7 @@ public class AuthenticationService {
                 .build();
     }
 
-    public AuthenticationResponse authenticate(AuthenticationRequest request) {
+    public AuthenticationResponse authenticate(AuthenticationRequest request) throws AuthenticationException {
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
@@ -90,6 +92,7 @@ public class AuthenticationService {
 
         var user = repository.findByEmail(request.getEmail())
                 .orElseThrow();
+        otpValidator(user,request.getOtp());
         var jwtToken = jwtService.generateToken(user);
         var refreshToken = jwtService.generateRefreshToken(user);
         revokeAllUserTokens(user);
@@ -169,6 +172,24 @@ public class AuthenticationService {
                 .matcher(password).matches();
         if (!isValid) {
             throw new AuthenticationException("password does not meet security recommendation!");
+
+        }
+    }
+    private void otpValidator(User user,String otp) throws AuthenticationException {
+
+        if (otp==null || otp.isEmpty()){
+            throw new AuthenticationException("otp is invalid");
+        }
+        if (user!=null){
+           String savedOtp=jedisPooled.get(user.getEmail());
+           if (savedOtp==null||savedOtp.isEmpty()){
+               throw new AuthenticationException("otp not found");
+           }
+           if (!otp.equals(savedOtp)){
+               throw new AuthenticationException("otp is invalid");
+           }else {
+               jedisPooled.del(user.getEmail());
+           }
 
         }
     }
